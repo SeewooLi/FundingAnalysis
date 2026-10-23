@@ -1,0 +1,117 @@
+---
+title: "Untitled"
+author: "Seewoo Li"
+date: "2026-10-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+library(tidyverse)
+library(gt)
+
+var_names <- c(
+  "record_id",
+  "name",
+  "Participants",
+  "Cohort",
+  "stage",
+  "com_discipline",
+  "region",
+  "Role",
+  "Title",
+  "Abstract",
+  "Award Type",
+  "Amount",
+  "Start Date",
+  "End Date",
+  "agency",
+  "mhealth_classification"
+)
+```
+
+
+
+```{r, include=FALSE}
+data <- read_excel("data_merged_classified.xlsx", sheet = 1)[,var_names]
+
+
+data <- data %>%
+  mutate(
+    `Award Category` = case_when(
+      `Award Type` %in% c(
+        "R01", "R03", "R21", "R34", "R37", "R56", "RF1"
+      ) ~ "Research Projects",
+
+      `Award Type` %in% c(
+        "U01", "R61", "R33", "UG3", "R18"
+      ) ~ "Cooperative / Multi-component Research",
+
+      `Award Type` %in% c(
+        "K01", "K08", "K23", "K24", "R00"
+      ) ~ "Career Development & Transition",
+
+      `Award Type` %in% c(
+        "T32", "F30", "D43"
+      ) ~ "Training & Fellowships",
+
+      `Award Type` %in% c(
+        "P30", "P50", "U48", "UM1"
+      ) ~ "Centers & Large Research Programs",
+
+      `Award Type` %in% c(
+        "R41", "R42", "R43", "R44"
+      ) ~ "Small Business Research",
+
+      `Award Type` %in% c(
+        "R13", "R25"
+      ) ~ "Conferences & Research Education",
+
+      TRUE ~ "Other / Review"
+    )
+  )
+```
+
+## Overall
+
+```{r, echo=FALSE}
+data |> 
+  reframe(Amount = sum(Amount),
+          Counts = n()) |> 
+  gt()
+```
+
+
+## Funding Agency
+
+```{r, echo=FALSE}
+data |> 
+  group_by(agency) |> 
+  reframe(Amount = sum(Amount),
+          Counts = n()) |> 
+  gt()
+```
+
+
+## Funding Agency
+
+```{r, echo=FALSE}
+data |> 
+  group_by(`Award Category`) |> 
+  reframe(Amount = sum(Amount),
+          Counts = n()) |> 
+  gt()
+```
+
+
+
+
+
+
+
+
+
+
+
+
