@@ -20,8 +20,8 @@ var_names <- c(
   "End Date"
 )
 
-data_nsf <- read_excel("NSF_demographic.xlsx", sheet = 1)[,var_names]
-data_nih <- read_excel("NIH_demographic.xlsx", sheet = 1)[,var_names]
+data_nsf <- read_excel("NSF_demographic2.xlsx", sheet = 1)[,var_names]
+data_nih <- read_excel("NIH_demographic2.xlsx", sheet = 1)[,var_names]
 
 data_nsf$agency <- "NSF"
 data_nih$agency <- "NIH"
