@@ -1,0 +1,403 @@
+---
+title: "mHTI Funding"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+library(tidyverse)
+library(gt)
+library(lubridate)
+library(ggplot2)
+library(scales)
+```
+
+
+
+```{r, include=FALSE}
+var_names <- c(
+  "name",
+  "Participants",
+  "Cohort",
+  "Role",
+  "Title",
+  "Abstract",
+  "Award Type",
+  "Amount",
+  "Start Date",
+  "End Date",
+  "agency",
+  "mhealth_classification"
+)
+
+data <- read_excel("data_merged_classified2.xlsx", sheet = 1)[,var_names]
+
+
+data <- data %>%
+  mutate(
+    `Award Category` = case_when(
+        `Award Type` %in% c(
+            "R01", "R03", "R21", "R34", "R37", "R56", "RF1",
+            "DP2", "DP5"
+        ) ~ "Research Projects",
+    
+        `Award Type` %in% c(
+            "U01", "R61", "R33", "UG3", "R18"
+        ) ~ "Cooperative / Multi-component Research",
+    
+        `Award Type` %in% c(
+            "K01", "K08", "K23", "K24", "K99", "R00"
+        ) ~ "Career Development & Transition",
+    
+        `Award Type` %in% c(
+            "T32", "F30", "F32", "D43"
+        ) ~ "Training & Fellowships",
+    
+        `Award Type` %in% c(
+            "P20", "P30", "P50", "U48", "UM1", "RM1"
+        ) ~ "Centers & Large Research Programs",
+    
+        `Award Type` %in% c(
+            "R24"
+        ) ~ "Research Infrastructure & Resource Development",
+    
+        `Award Type` %in% c(
+            "R41", "R42", "R43", "R44"
+        ) ~ "Small Business Research",
+    
+        `Award Type` %in% c(
+            "R13", "R25"
+        ) ~ "Conferences & Research Education",
+    
+        TRUE ~ `Award Type`
+    ),
+    
+        `Award Types` = case_when(
+        `Award Category` == "Research Projects" ~
+            "R01, R03, R21, R34, R37, R56, RF1, DP2, DP5",
+    
+        `Award Category` == "Cooperative / Multi-component Research" ~
+            "U01, R61, R33, UG3, R18",
+    
+        `Award Category` == "Career Development & Transition" ~
+            "K01, K08, K23, K24, K99, R00",
+    
+        `Award Category` == "Training & Fellowships" ~
+            "T32, F30, F32, D43",
+    
+        `Award Category` == "Centers & Large Research Programs" ~
+            "P20, P30, P50, U48, UM1, RM1",
+    
+        `Award Category` == "Research Infrastructure & Resource Development" ~
+            "R24",
+    
+        `Award Category` == "Small Business Research" ~
+            "R41, R42, R43, R44",
+    
+        `Award Category` == "Conferences & Research Education" ~
+            "R13, R25",
+    
+        TRUE ~ `Award Type`
+    ),
+
+    `mHealth` = case_when(
+      `mhealth_classification` == "mHealth-related" ~
+        "mHealth-related",
+      TRUE ~ "Not mHealth-related"
+    ),
+    `Start Date` = as.Date(parse_date_time(
+            `Start Date`,
+            orders = c("mdy", "ymd HMS", "ymd")
+        )),
+    `End Date` = as.Date(parse_date_time(
+            `End Date`,
+            orders = c("mdy", "ymd HMS", "ymd")
+        ))
+  ) |>
+  filter(`Start Date` > as.Date("2000-01-01"))
+```
+
+## Overall
+
+
+```{r, echo=FALSE}
+temp <- data |> 
+  group_by(agency) |> 
+  reframe(Amount = sum(Amount),
+          Counts = n())
+colnames(temp)[1] <- "Agency" 
+
+temp |>
+  rbind(c("Total", colSums(temp[,-1]))) |> 
+  gt()
+```
+
+
+
+## Award Type
+
+### NIH
+
+```{r, echo=FALSE}
+data |> 
+  filter(agency == "NIH") |> 
+  group_by(`Award Category`, `Award Types`) |> 
+  reframe(Amount = sum(Amount),
+          Counts = n()) |> 
+  arrange(desc(Counts)) |>
+  gt()
+```
+
+
+
+### NSF
+
+```{r, echo=FALSE}
+data |> 
+  filter(agency == "NSF") |> 
+  group_by(`Award Category`) |> 
+  reframe(Amount = sum(Amount),
+          Counts = n()) |> 
+  arrange(desc(Counts)) |>
+  gt()
+```
+
+
+## Across Time
+
+```{r, echo=FALSE}
+data |> 
+  filter(`Start Date` > as.Date("2000-01-01")) |>
+  mutate(
+    start_year = year(ymd(`Start Date`))
+  ) |> 
+  group_by(start_year) |> 
+  reframe(Amount = sum(Amount),
+          Counts = n()) |> 
+  gt()
+```
+
+
+```{r, echo=FALSE, out.width="100%", fig.asp=.6}
+yearly_data <- data |>
+  filter(`Start Date` > as.Date("2000-01-01")) |>
+  mutate(
+    start_year = year(
+      parse_date_time(
+        trimws(as.character(`Start Date`)),
+        orders = c("mdy", "ymd HMS", "ymd"),
+        quiet = TRUE
+      )
+    )
+  ) |>
+  filter(!is.na(start_year)) |>
+  group_by(start_year) |>
+  summarise(
+    Amount = sum(Amount, na.rm = TRUE),
+    Counts = n(),
+    .groups = "drop"
+  ) |>
+  arrange(start_year)
+
+ggplot(yearly_data, aes(x = start_year, y = Amount)) +
+  geom_col(fill = "#3B6C8E", width = 0.7) +
+  scale_x_continuous(breaks = yearly_data$start_year) +
+  scale_y_continuous(
+    labels = label_dollar(scale_cut = cut_short_scale())
+  ) +
+  labs(
+    title = "Annual NIH & NSF Funding",
+    subtitle = "Total award amount by start year",
+    x = "Start Year",
+    y = "Total Funding",
+    caption = "Source: NIH & NSF award data"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.minor = element_blank()
+  )
+```
+
+
+```{r, echo=FALSE, out.width="100%", fig.asp=.6}
+ggplot(yearly_data, aes(x = start_year, y = Counts)) +
+  geom_line(color = "#3B6C8E", linewidth = 1) +
+  geom_point(color = "#3B6C8E", size = 2.5) +
+  scale_x_continuous(breaks = yearly_data$start_year) +
+  scale_y_continuous(labels = label_comma()) +
+  labs(
+    title = "Annual NIH & NSF Award Counts",
+    x = "Start Year",
+    y = "Number of Awards",
+    caption = "Source: NIH & NSF award data"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.minor = element_blank()
+  )
+```
+
+
+## mHealth-related Funding
+
+```{r, echo=FALSE}
+data |>
+  filter(`Start Date` > as.Date("2000-01-01")) |>
+  mutate(
+    start_year = year(
+      parse_date_time(
+        trimws(as.character(`Start Date`)),
+        orders = c("mdy", "ymd HMS", "ymd"),
+        quiet = TRUE
+      )
+    )
+  ) |>
+  filter(!is.na(start_year)) |>
+  group_by(start_year) |>
+  summarise(
+    `mHealth-related Amount` =
+      sum(Amount[mHealth == "mHealth-related"], na.rm = TRUE),
+
+    `mHealth-related Counts` =
+      sum(mHealth == "mHealth-related", na.rm = TRUE),
+
+    `mHealth-unrelated Amount` =
+      sum(Amount[mHealth == "Not mHealth-related"], na.rm = TRUE),
+
+    `mHealth-unrelated Counts` =
+      sum(mHealth == "Not mHealth-related", na.rm = TRUE),
+
+    .groups = "drop"
+  ) |>
+  arrange(start_year) |>
+  gt() |>
+  tab_header(
+    title = "Annual Funding by mHealth Relevance",
+  ) |>
+  cols_label(
+    start_year = "Start Year",
+    `mHealth-related Amount` = "mHealth-related Amount",
+    `mHealth-related Counts` = "mHealth-related Counts",
+    `mHealth-unrelated Amount` = "mHealth-unrelated Amount",
+    `mHealth-unrelated Counts` = "mHealth-unrelated Counts"
+  ) |>
+  fmt_currency(
+    columns = c(
+      `mHealth-related Amount`,
+      `mHealth-unrelated Amount`
+    ),
+    currency = "USD",
+    decimals = 0
+  ) |>
+  fmt_number(
+    columns = c(
+      `mHealth-related Counts`,
+      `mHealth-unrelated Counts`
+    ),
+    decimals = 0,
+    use_seps = TRUE
+  ) |>
+  opt_row_striping()
+```
+
+
+```{r, echo=FALSE, out.width="100%", fig.asp=.6}
+yearly_data <- data |>
+  filter(`Start Date` > as.Date("2000-01-01")) |>
+  mutate(
+    start_year = year(
+      parse_date_time(
+        trimws(as.character(`Start Date`)),
+        orders = c("mdy", "ymd HMS", "ymd"),
+        quiet = TRUE
+      )
+    ),
+    mHealth_group = case_when(
+      mHealth == "mHealth-related" ~ "mHealth-related",
+      mHealth == "Not mHealth-related" ~ "mHealth-unrelated",
+      TRUE ~ NA_character_
+    )
+  ) |>
+  filter(!is.na(start_year), !is.na(mHealth_group)) |>
+  group_by(start_year, mHealth_group) |>
+  summarise(
+    Amount = sum(Amount, na.rm = TRUE),
+    Counts = n(),
+    .groups = "drop"
+  ) |>
+  arrange(start_year)
+
+ggplot(
+  yearly_data,
+  aes(x = start_year, y = Amount, fill = mHealth_group)
+) +
+  geom_col(position = "stack", width = 0.7) +
+  scale_x_continuous(breaks = sort(unique(yearly_data$start_year))) +
+  scale_y_continuous(
+    labels = label_dollar(scale_cut = cut_short_scale())
+  ) +
+  scale_fill_manual(
+    values = c(
+      "mHealth-related" = "#3B6C8E",
+      "mHealth-unrelated" = "#D98E5B"
+    )
+  ) +
+  labs(
+    title = "Annual NIH & NSF Funding by mHealth Relevance",
+    subtitle = "Total award amount by start year",
+    x = "Start Year",
+    y = "Total Funding",
+    fill = "Award Category",
+    caption = "Source: NIH & NSF award data"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.minor = element_blank()
+  )
+```
+
+
+```{r, echo=FALSE, out.width="100%", fig.asp=.6}
+ggplot(
+  yearly_data,
+  aes(x = start_year, y = Counts, color = mHealth_group)
+) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2.5) +
+  scale_x_continuous(breaks = sort(unique(yearly_data$start_year))) +
+  scale_y_continuous(labels = label_comma()) +
+  scale_color_manual(
+    values = c(
+      "mHealth-related" = "#3B6C8E",
+      "mHealth-unrelated" = "#D98E5B"
+    )
+  ) +
+  labs(
+    title = "Annual NIH & NSF Award Counts by mHealth Relevance",
+    subtitle = "Number of awards by start year",
+    x = "Start Year",
+    y = "Number of Awards",
+    color = "Award Category",
+    caption = "Source: NIH & NSF award data"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.minor = element_blank()
+  )
+```
+
+
+
+
+
+
+
