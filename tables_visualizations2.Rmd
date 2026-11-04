@@ -126,11 +126,34 @@ temp <- data |>
   group_by(agency) |> 
   reframe(Amount = sum(Amount),
           Counts = n())
-colnames(temp)[1] <- "Agency" 
+
+temp <- data |> 
+  group_by(agency) |> 
+  reframe(
+    Amount = sum(Amount, na.rm = TRUE),
+    Counts = n()
+  )
 
 temp |>
-  rbind(c("Total", colSums(temp[,-1]))) |> 
-  gt()
+  bind_rows(
+    tibble(
+      agency = "Total",
+      Amount = sum(temp$Amount),
+      Counts = sum(temp$Counts)
+    )
+  ) |>
+  gt() |>
+  tab_header(title = "Total Awarded Funding from 2015 to 2026") |>
+  cols_label(
+    agency = "Agency",
+    Amount = "Amount",
+    Counts = "Counts"
+  ) |>
+  fmt_currency(
+    columns = Amount,
+    currency = "USD",
+    decimals = 0
+  )
 ```
 
 
@@ -146,7 +169,17 @@ data |>
   reframe(Amount = sum(Amount),
           Counts = n()) |> 
   arrange(desc(Counts)) |>
-  gt()
+  gt() |>
+  tab_header(
+    title = "Summary of NIH Funding by Award Category",
+  ) |>
+  fmt_currency(
+    columns = c(
+      `Amount`
+    ),
+    currency = "USD",
+    decimals = 0
+  )
 ```
 
 
@@ -160,7 +193,17 @@ data |>
   reframe(Amount = sum(Amount),
           Counts = n()) |> 
   arrange(desc(Counts)) |>
-  gt()
+  gt() |>
+  tab_header(
+    title = "Summary of NSF Funding by Award Category",
+  ) |>
+  fmt_currency(
+    columns = c(
+      `Amount`
+    ),
+    currency = "USD",
+    decimals = 0
+  )
 ```
 
 
