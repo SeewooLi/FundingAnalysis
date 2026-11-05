@@ -171,7 +171,7 @@ data |>
   arrange(desc(Counts)) |>
   gt() |>
   tab_header(
-    title = "Summary of NIH Funding by Award Category",
+    title = "NIH Funding by Award Category",
   ) |>
   fmt_currency(
     columns = c(
@@ -195,7 +195,7 @@ data |>
   arrange(desc(Counts)) |>
   gt() |>
   tab_header(
-    title = "Summary of NSF Funding by Award Category",
+    title = "NSF Funding by Award Category",
   ) |>
   fmt_currency(
     columns = c(
@@ -203,6 +203,9 @@ data |>
     ),
     currency = "USD",
     decimals = 0
+  ) |>
+  tab_options(
+    table.width = px(600)
   )
 ```
 
@@ -392,17 +395,16 @@ ggplot(
   ) +
   labs(
     title = "Annual NIH & NSF Funding by mHealth Relevance",
-    subtitle = "Total award amount by start year",
     x = "Start Year",
     y = "Total Funding",
-    fill = "Award Category",
-    caption = "Source: NIH & NSF award data"
+    fill = "Award Category"
   ) +
   theme_minimal(base_size = 13) +
   theme(
     plot.title = element_text(face = "bold"),
     axis.text.x = element_text(angle = 45, hjust = 1),
-    panel.grid.minor = element_blank()
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom"
   )
 ```
 
@@ -424,17 +426,16 @@ ggplot(
   ) +
   labs(
     title = "Annual NIH & NSF Award Counts by mHealth Relevance",
-    subtitle = "Number of awards by start year",
     x = "Start Year",
     y = "Number of Awards",
-    color = "Award Category",
-    caption = "Source: NIH & NSF award data"
+    color = "Award Category"
   ) +
   theme_minimal(base_size = 13) +
   theme(
     plot.title = element_text(face = "bold"),
     axis.text.x = element_text(angle = 45, hjust = 1),
-    panel.grid.minor = element_blank()
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom"
   )
 ```
 
